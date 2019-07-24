@@ -1,2 +1,2 @@
-# spike
+# seckill
 秒杀系统实践
