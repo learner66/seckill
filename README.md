@@ -1,5 +1,6 @@
 # seckill
 秒杀系统实践
+
 1.使用springboot来构造项目，相比于ssm，springboot省略了那些配置文件。
 
     @SpringBootApplication
