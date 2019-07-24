@@ -1,4 +1,4 @@
-package com.zhang.spike.redis;
+package com.zhang.seckill.redis;
 
 public class UserKey extends BasePrefix {
     private UserKey(String prefix) {

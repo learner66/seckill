@@ -1,4 +1,4 @@
-package com.zhang.spike.result;
+package com.zhang.seckill.result;
 
 public class Result<T> {
     private int code;

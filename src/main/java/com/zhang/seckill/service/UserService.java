@@ -1,7 +1,7 @@
-package com.zhang.spike.service;
+package com.zhang.seckill.service;
 
-import com.zhang.spike.dao.UserDao;
-import com.zhang.spike.domain.User;
+import com.zhang.seckill.dao.UserDao;
+import com.zhang.seckill.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

@@ -1,7 +1,7 @@
-package com.zhang.spike.dao;
+package com.zhang.seckill.dao;
 
 
-import com.zhang.spike.domain.User;
+import com.zhang.seckill.domain.User;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

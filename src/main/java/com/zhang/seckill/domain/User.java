@@ -1,4 +1,4 @@
-package com.zhang.spike.domain;
+package com.zhang.seckill.domain;
 
 public class User {
     private int id;

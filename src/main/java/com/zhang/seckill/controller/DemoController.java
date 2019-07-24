@@ -1,11 +1,11 @@
-package com.zhang.spike.controller;
+package com.zhang.seckill.controller;
 
 
-import com.zhang.spike.domain.User;
-import com.zhang.spike.redis.RedisService;
-import com.zhang.spike.redis.UserKey;
-import com.zhang.spike.result.Result;
-import com.zhang.spike.service.UserService;
+import com.zhang.seckill.domain.User;
+import com.zhang.seckill.redis.RedisService;
+import com.zhang.seckill.redis.UserKey;
+import com.zhang.seckill.result.Result;
+import com.zhang.seckill.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,7 +80,7 @@ public class DemoController {
     @ResponseBody
     public Result<String> jedisService(){
         //利用前缀来分辨不同的功能
-       User user =  redisService.get(UserKey.getById,"key1",User.class);
+       User user =  redisService.get(UserKey.getById,"1",User.class);
        return Result.sucess(user);
     }
 
@@ -90,7 +90,7 @@ public class DemoController {
         User user = new User();
         user.setId(1);
         user.setName("haha");
-        redisService.set(UserKey.getById,"key1",user);
+        redisService.set(UserKey.getById,"1",user);
         return Result.sucess("sucess");
     }
 
