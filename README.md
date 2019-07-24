@@ -10,7 +10,7 @@
         }
     }
 
-2.springboot继承mybatis来进行数据库的操作，并且结合druid来完成数据库的连接。
+2.springboot集成mybatis来进行数据库的操作，并且结合druid来完成数据库的连接。
 
     <dependency>
         <groupId>org.mybatis.spring.boot</groupId>
