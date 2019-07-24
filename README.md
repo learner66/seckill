@@ -44,6 +44,7 @@
 redis这里不细说，需要另外学习。
 
 在Java中操作redis的思路如下：
+
 #1 为了更好的使用jedis，可以自己封装一个jedisService来操作，更方便进行对象的存储。
 
     public class RedisService {
