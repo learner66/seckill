@@ -53,7 +53,6 @@ public class RedisService {
         }finally {
             returnToPool(jedis);
         }
-
     }
 
     //查询数据是否存在
