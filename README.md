@@ -196,19 +196,19 @@ redis这里不细说，需要另外学习。
     }
 #2.服务端： PASS= MD5(用户输入+随机Salt)
 
-//第一次加密,一般发生在js中
-    public static String inputPassFormPass(String inputPass){
-        //String str = salt.charAt(0)+salt.charAt(2)+inputPass+salt.charAt(5)+salt.charAt(4);
-        String str = ""+salt.charAt(0)+salt.charAt(2) + inputPass +salt.charAt(5) + salt.charAt(4);
-        return md5(str);
-    }
+    //第一次加密,一般发生在js中
+        public static String inputPassFormPass(String inputPass){
+            //String str = salt.charAt(0)+salt.charAt(2)+inputPass+salt.charAt(5)+salt.charAt(4);
+            String str = ""+salt.charAt(0)+salt.charAt(2) + inputPass +salt.charAt(5) + salt.charAt(4);
+            return md5(str);
+        }
 
 
-//第二次加密
-    public static String formPassToDBPass(String formPass,String salt){
-        String str = salt.charAt(0)+salt.charAt(2)+formPass+salt.charAt(5)+salt.charAt(4);
-        return md5(str);
-    }
+    //第二次加密
+        public static String formPassToDBPass(String formPass,String salt){
+            String str = salt.charAt(0)+salt.charAt(2)+formPass+salt.charAt(5)+salt.charAt(4);
+            return md5(str);
+        }
 
 
     public static String inputPassToDBPass(String input,String salt){
