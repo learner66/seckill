@@ -1,17 +1,20 @@
-package com.zhang.seckill.domain;
+package com.zhang.seckill.service;
 
-import com.sun.deploy.net.HttpResponse;
 import com.zhang.seckill.dao.SeckillUserDao;
+import com.zhang.seckill.domain.OrderInfo;
+import com.zhang.seckill.domain.SeckillUser;
 import com.zhang.seckill.exception.GlobalException;
 import com.zhang.seckill.redis.RedisService;
 import com.zhang.seckill.redis.SeckillUserKey;
 import com.zhang.seckill.result.CodeMsg;
 import com.zhang.seckill.util.MD5Util;
 import com.zhang.seckill.util.UUIDUtil;
+import com.zhang.seckill.vo.GoodsVo;
 import com.zhang.seckill.vo.LoginVo;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -25,7 +28,24 @@ public class SeckillService {
     @Autowired
     SeckillUserDao seckillUserDao;
 
-    public  SeckillUser getByToken(HttpServletResponse response,String token) {
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
+    @Autowired
+    GoodsService goodsService;
+
+    @Autowired
+    OrderService orderService;
+
+    //减少订单
+    @Transactional
+    public  OrderInfo seckill(SeckillUser seckillUser, GoodsVo goodsVo) {
+        //1.从秒杀商品表中减少库存
+        goodsService.reduceStock(goodsVo);
+        //2.生成秒杀商品订单
+        OrderInfo orderInfo = orderService.createOrder(seckillUser,goodsVo);
+        return orderInfo;
+    }
+
+    public SeckillUser getByToken(HttpServletResponse response, String token) {
         if(StringUtils.isEmpty(token)){
             return null;
         }
@@ -64,7 +84,7 @@ public class SeckillService {
             throw new GlobalException(CodeMsg.PASSWORD_ERROR);
         }
 
-
+        addCookie(response,seckillUser);
         //生成cookie
        /* Cookie cookie = new Cookie(COOKIE_NAME_TOKEN,token);
         cookie.setMaxAge(SeckillUserKey.token.expireSeconds());

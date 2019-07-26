@@ -13,9 +13,11 @@ public class CodeMsg {
     public static CodeMsg MOBILE_ERROR_FORMAT = new CodeMsg(500202,"手机号码格式出错");
     public static CodeMsg USER_NOT_EXITS =new CodeMsg(500203,"用户不存在");
     public static final CodeMsg PASSWORD_ERROR = new CodeMsg(500204,"密码错误");
-    public static final CodeMsg BIND_ERROR = new CodeMsg(500205,"绑定参数异常：%s"); ;
+    public static final CodeMsg BIND_ERROR = new CodeMsg(500205,"绑定参数异常：%s");
 
-
+    //订单异常信息
+    public static final CodeMsg ORDER_UNREAPTEABLE= new CodeMsg(500300,"不能重复秒杀");
+    public static final CodeMsg STOCK_EMPTY= new CodeMsg(500301,"库存不足");
 
      CodeMsg(int code, String msg) {
         this.code = code;

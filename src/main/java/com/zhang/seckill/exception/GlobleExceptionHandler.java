@@ -23,6 +23,7 @@ public class GlobleExceptionHandler {
             String message = error.getDefaultMessage();
             return Result.error(CodeMsg.BIND_ERROR.fillArgs(message));
         }else{
+            e.printStackTrace();
             return Result.error(CodeMsg.SERVER_ERROR);
         }
     }

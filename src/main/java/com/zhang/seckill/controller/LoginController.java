@@ -1,14 +1,12 @@
 package com.zhang.seckill.controller;
 
-import com.zhang.seckill.domain.SeckillService;
+import com.zhang.seckill.service.SeckillService;
 import com.zhang.seckill.exception.GlobalException;
 import com.zhang.seckill.redis.RedisService;
 import com.zhang.seckill.result.CodeMsg;
 import com.zhang.seckill.result.Result;
 import com.zhang.seckill.service.UserService;
-import com.zhang.seckill.validator.ValidatorUtil;
 import com.zhang.seckill.vo.LoginVo;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
