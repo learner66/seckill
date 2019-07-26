@@ -1,6 +1,8 @@
 # seckill
 秒杀系统实践
 
+第一节
+
 1.使用springboot来构造项目，相比于ssm，springboot省略了那些配置文件。
 
     @SpringBootApplication
@@ -153,6 +155,157 @@ redis这里不细说，需要另外学习。
             return JSON.toJavaObject(JSON.parseObject(str),clazz);
         }
     }
+
+
+
+第二节
+
+
+1.两次MD5
+
+#1.用户端： PASS= MD5(明文+固定salt)
+
+    function doLogin(){
+       g_showLoading();
+
+       var inputPass = $("#password").val();
+       var salt = g_passsword_salt;
+       var str = ""+salt.charAt(0)+salt.charAt(2) + inputPass +salt.charAt(5) + salt.charAt(4);
+       var password = md5(str);
+
+       $.ajax({
+          url: "/login/do_login",
+           type: "POST",
+           data:{
+              mobile:$("#mobile").val(),
+              password: password
+           },
+           success:function(data){
+              layer.closeAll();
+              if(data.code == 0){
+                 layer.msg("成功");
+                 window.location.href="/goods/to_list";
+              }else{
+                 layer.msg(data.msg);
+              }
+           },
+           error:function(){
+              layer.closeAll();
+           }
+       });
+    }
+#2.服务端： PASS= MD5(用户输入+随机Salt)
+
+    //第一次加密,一般发生在js中
+        public static String inputPassFormPass(String inputPass){
+            //String str = salt.charAt(0)+salt.charAt(2)+inputPass+salt.charAt(5)+salt.charAt(4);
+            String str = ""+salt.charAt(0)+salt.charAt(2) + inputPass +salt.charAt(5) + salt.charAt(4);
+            return md5(str);
+        }
+
+
+    //第二次加密
+        public static String formPassToDBPass(String formPass,String salt){
+            String str = salt.charAt(0)+salt.charAt(2)+formPass+salt.charAt(5)+salt.charAt(4);
+            return md5(str);
+        }
+
+
+    public static String inputPassToDBPass(String input,String salt){
+        String formPass = inputPassFormPass(input);
+        String dbPass = formPassToDBPass(formPass,salt);
+        return dbPass;
+    }
+
+
+2.JR303验证
+
+    @NotNull
+    @isMobile
+    private String mobile;
+    @NotNull
+    @Length(min=32)
+    private String password;
+自定义验证
+
+    @Target({ElementType.METHOD, ElementType.FIELD, ElementType.ANNOTATION_TYPE, ElementType.CONSTRUCTOR, ElementType.PARAMETER, ElementType.TYPE_USE})
+    @Retention(RetentionPolicy.RUNTIME)
+    //@Repeatable(javax.validation.constraints.NotNull.List.class)
+    @Documented
+    @Constraint(
+            validatedBy = {isMobileValidator.class}
+    )
+    public @interface isMobile {
+        boolean required() default true;
+        String message() default "手机号码格式有误";
+        Class<?>[] groups() default {};
+
+        Class<? extends Payload>[] payload() default {};
+        @Target({ElementType.METHOD, ElementType.FIELD, ElementType.ANNOTATION_TYPE, ElementType.CONSTRUCTOR, ElementType.PARAMETER, ElementType.TYPE_USE})
+        @Retention(RetentionPolicy.RUNTIME)
+        @Documented
+        public @interface List {
+            javax.validation.constraints.NotNull[] value();
+        }
+    }
+利用ConstraintValidator实际完成验证
+
+    public class isMobileValidator implements ConstraintValidator<isMobile, String> {
+
+        private boolean required = false;
+        @Override
+        public void initialize(isMobile constraintAnnotation) {
+            required = constraintAnnotation.required();
+        }
+        @Override
+        public boolean isValid(String s, ConstraintValidatorContext constraintValidatorContext) {
+            if(required){ //如果是必需的，那么可以直接判断
+                return ValidatorUtil.isMobile(s);
+            }else{  //如果不是必需的，那么需要先判空。
+                if(StringUtils.isEmpty(s)){
+                    return true;
+                }else{
+                    return ValidatorUtil.isMobile(s);
+                }
+            }
+        }
+    }
+
+
+3.全局异常处理
+
+    @ControllerAdvice
+    @ResponseBody
+    public class GlobleExceptionHandler {
+        @ExceptionHandler(value=Exception.class)
+        public Result<String> exceptionHandler(HttpServletRequest request, Exception e){
+            if(e instanceof BindException){
+                BindException ex = (BindException)e;
+                List<ObjectError> errors = ex.getAllErrors();
+                ObjectError error = errors.get(0);
+                String message = error.getDefaultMessage();
+                return Result.error(CodeMsg.BIND_ERROR.fillArgs(message));
+            }else{
+                return Result.error(CodeMsg.SERVER_ERROR);
+            }
+        }
+    }
+
+
+4.分布式session：将session存放在redis中
+
+    private void addCookie(HttpServletResponse response,SeckillUser seckillUser){
+        //生成cookie
+        String token = UUIDUtil.uuid();
+        //用户信息写入到redis中
+        redisService.set(SeckillUserKey.token,token,seckillUser);
+        Cookie cookie = new Cookie(COOKIE_NAME_TOKEN,token);
+        cookie.setMaxAge(SeckillUserKey.token.expireSeconds());
+        cookie.setPath("/");
+        response.addCookie(cookie);
+    }
+
+
 
 
 
