@@ -307,6 +307,95 @@ redis这里不细说，需要另外学习。
 
 
 
+第三节：秒杀逻辑
+数据库设计
+
+秒杀逻辑（未优化）
+#1 进入商品列表页面
+#2 点击商品详情页面
+#3 点击秒杀
+#4 去库存，创建订单
+
+        @RequestMapping("/do_seckill")
+        public String do_seckill(HttpServletResponse response,Model model, @RequestParam("goodsId")long goodsId,
+         @CookieValue(value= SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+                                 @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken){
+            //首先检查用户是否存在，用户不存在要返回登陆页面,用户应该从缓存中查找
+            if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+                return "login";
+            }
+            String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+            SeckillUser seckillUser = seckillService.getByToken(response,token);
+            model.addAttribute("seckillUser",seckillUser);
+            //1.如果用户不存在，那么就返回到登陆页面
+            if(seckillUser==null){
+                return "login";
+            }
+            //2.判断存库，应该在秒杀商品表验证
+            GoodsVo goodsVo = goodsService.getGoodsByGoodsId(goodsId);
+            int stock = goodsVo.getGoodsStock();
+            if(stock<=0){
+                model.addAttribute("msg", CodeMsg.STOCK_EMPTY.getMsg());
+                return "seckill_fail";
+            }
+
+            //3.如果该用户已经下过订单(秒杀订单)，那么就不能再进行下单
+            SeckillOrder  seckillOrder = orderService.findOrderByUserIdAndGoodsId(seckillUser.getId(),goodsId);
+            if(seckillOrder!=null){
+                model.addAttribute("msg", CodeMsg.ORDER_UNREAPTEABLE.getMsg());
+                return "seckill_fail";
+            }
+
+            //4.减库存，生成订单,为用户和商品生成订单，并将库存减少,应该添加事务
+            OrderInfo orderInfo = seckillService.seckill(seckillUser,goodsVo);
+            model.addAttribute("orderInfo",orderInfo);
+            model.addAttribute("goods",goodsVo);
+            return "order_detail";
+        }
+
+使用Jmeter对未优化的代码进行压测
+
+压测的代码段
+
+    @RequestMapping("/to_list")
+    public String toList(HttpServletResponse response,Model model, @CookieValue(value= SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+                         @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken){
+        if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+            return "login";
+        }
+        String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+        SeckillUser user = seckillService.getByToken(response,token); //从redis中获取用户缓存
+
+        List<GoodsVo> goodsList =  goodsService.findGoodsVo(); //从数据库中获取商品信息
+        model.addAttribute("goodsList",goodsList);
+        //log.info("now...");
+        return "goods_list";
+    }
+
+压测时mysql服务进程的资源利用率
+        PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND   
+        7715 mysql     20   0 1575008 150028  17692 S 112.3  3.7   0:15.72 mysqld  
+压测的吞吐量 2439.0/sec
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
