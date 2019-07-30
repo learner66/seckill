@@ -373,8 +373,10 @@ redis这里不细说，需要另外学习。
     }
 
 压测时mysql服务进程的资源利用率
+
         PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND   
         7715 mysql     20   0 1575008 150028  17692 S 112.3  3.7   0:15.72 mysqld  
+        
 压测的吞吐量 2439.0/sec
 
 
