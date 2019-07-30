@@ -470,6 +470,26 @@ redis这里不细说，需要另外学习。
 
 #3 对象缓存：就是当一个访问一个对象的时候，首先从缓存中查找该对象，如果不存在才会去数据库中查找；如果要进行对象的更新操作的话，要注意缓存的更新操作。
 
+
+	public boolean updatePassword(String token, long id, String formPass) {
+		//取user
+		MiaoshaUser user = getById(id);
+		if(user == null) {
+			throw new GlobalException(CodeMsg.MOBILE_NOT_EXIST);
+		}
+		//更新数据库
+		MiaoshaUser toBeUpdate = new MiaoshaUser();
+		toBeUpdate.setId(id);
+		toBeUpdate.setPassword(MD5Util.formPassToDBPass(formPass, user.getSalt()));
+		miaoshaUserDao.update(toBeUpdate);
+		//处理缓存
+		redisService.delete(MiaoshaUserKey.getById, ""+id);
+		user.setPassword(toBeUpdate.getPassword());
+		redisService.set(MiaoshaUserKey.token, token, user);
+		return true;
+	}
+
+
     127.0.0.1:6379> get GoodsKey:goodsList
     "<!DOCTYPE HTML>\r\n<html>\r\n<head>\r\n    <title>\xe5\x95\x86\xe5\x93\x81\xe5\x88\x97\xe8\xa1\xa8</title>\r\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\r\n    <!-- jquery -->\r\n    <script type=\"text/javascript\" src=\"/js/jquery.min.js\"></script>\r\n    <!-- bootstrap -->\r\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"/bootstrap/css/bootstrap.min.css\" />\r\n    <script type=\"text/javascript\" src=\"/bootstrap/js/bootstrap.min.js\"></script>\r\n    <!-- jquery-validator -->\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/jquery.validate.min.js\"></script>\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/localization/messages_zh.min.js\"></script>\r\n    <!-- layer -->\r\n    <script type=\"text/javascript\" src=\"/layer/layer.js\"></script>\r\n    <!-- md5.js -->\r\n    <script type=\"text/javascript\" src=\"/js/md5.min.js\"></script>\r\n    <!-- common.js -->\r\n    <script type=\"text/javascript\" src=\"/js/common.js\"></script>\r\n</head>\r\n<body>\r\n<div class=\"panel panel-default\">\r\n    <div class=\"panel-heading\">\xe7\xa7\x92\xe6\x9d\x80\xe5\x95\x86\xe5\x93\x81\xe5\x88\x97\xe8\xa1\xa8</div>\r\n    <table class=\"table\" id=\"goodslist\">\r\n        <tr><td>\xe5\x95\x86\xe5\x93\x81\xe5\x90\x8d\xe7\xa7\xb0</td><td>\xe5\x95\x86\xe5\x93\x81\xe5\x9b\xbe\xe7\x89\x87</td><td>\xe5\x95\x86\xe5\x93\x81\xe5\x8e\x9f\xe4\xbb\xb7</td><td>\xe7\xa7\x92\xe6\x9d\x80\xe4\xbb\xb7</td><td>\xe5\xba\x93\xe5\xad\x98\xe6\x95\xb0\xe9\x87\x8f</td><td>\xe8\xaf\xa6\xe6\x83\x85</td></tr>\r\n        <tr>\r\n            <td>iphonex</td>\r\n            <td ><img src=\"/img/iphonex.png\" width=\"100\" height=\"100\" /></td>\r\n            <td>8756.0</td>\r\n            <td>0.01</td>\r\n            <td>3</td>\r\n            <td><a href=\"/goods/to_detail/1\">\xe8\xaf\xa6\xe6\x83\x85</a></td>\r\n        </tr>\r\n        <tr>\r\n            <td>\xe5\x8d\x8e\xe4\xb8\xbamate10</td>\r\n            <td ><img src=\"/img/meta10.png\" width=\"100\" height=\"100\" /></td>\r\n            <td>3212.0</td>\r\n            <td>0.01</td>\r\n            <td>9</td>\r\n            <td><a href=\"/goods/to_detail/2\">\xe8\xaf\xa6\xe6\x83\x85</a></td>\r\n        </tr>\r\n    </table>\r\n</div>\r\n</body>\r\n</html>\r\n"
     127.0.0.1:6379> get GoodsKey:goodsId1
