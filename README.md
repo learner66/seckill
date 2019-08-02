@@ -98,6 +98,7 @@ redis这里不细说，需要另外学习。
             returnToPool(jedis);
         }
     }
+
 #2  对于key值，尽量设计为与用户相关的key，一般需要加上前缀来区分。
 
     public class BasePrefix  implements KeyPrefix{
@@ -120,6 +121,7 @@ redis这里不细说，需要另外学习。
             return className+":"+prefix;
         }
     }
+
 #3 对于value值，需要将对象进行json化。
 
     private <T> String beanToString(T value) {
@@ -418,6 +420,7 @@ redis这里不细说，需要另外学习。
     }
     return html;
 }
+
 #2 URL缓存：当访问一个url的时候，可以根据该url中提供的参数进行缓存，如缓存某一个商品ID的信息。
 
     @RequestMapping(value = "/to_detail/{goodsId}",produces = "text/html")
@@ -551,9 +554,9 @@ redis这里不细说，需要另外学习。
     }
 
 
-2.url隐藏,并不提供真实得秒杀地址，而是去获取一个随机得秒杀地址
+2.url隐藏,并不提供真实的秒杀地址，而是去获取一个随机得秒杀地址
 
-	#1 获取一个随机得path
+	#1 获取一个随机的path
 	function getSeckillPath(){
 	    var goodsId = $("#goodsId").val();
 	    g_showLoading();
