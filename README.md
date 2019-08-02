@@ -495,14 +495,100 @@ redis这里不细说，需要另外学习。
     127.0.0.1:6379> get GoodsKey:goodsId1
     "<!DOCTYPE HTML>\r\n<html>\r\n<head>\r\n    <title>\xe5\x95\x86\xe5\x93\x81\xe8\xaf\xa6\xe6\x83\x85</title>\r\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\r\n    <!-- jquery -->\r\n    <script type=\"text/javascript\" src=\"/js/jquery.min.js\"></script>\r\n    <!-- bootstrap -->\r\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"/bootstrap/css/bootstrap.min.css\" />\r\n    <script type=\"text/javascript\" src=\"/bootstrap/js/bootstrap.min.js\"></script>\r\n    <!-- jquery-validator -->\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/jquery.validate.min.js\"></script>\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/localization/messages_zh.min.js\"></script>\r\n    <!-- layer -->\r\n    <script type=\"text/javascript\" src=\"/layer/layer.js\"></script>\r\n    <!-- md5.js -->\r\n    <script type=\"text/javascript\" src=\"/js/md5.min.js\"></script>\r\n    <!-- common.js -->\r\n    <script type=\"text/javascript\" src=\"/js/common.js\"></script>\r\n</head>\r\n<body>\r\n\r\n<div class=\"panel panel-default\">\r\n  <div class=\"panel-heading\">\xe7\xa7\x92\xe6\x9d\x80\xe5\x95\x86\xe5\x93\x81\xe8\xaf\xa6\xe6\x83\x85</div>\r\n  <div class=\"panel-body\">\r\n  \t\r\n  \t<span>\xe6\xb2\xa1\xe6\x9c\x89\xe6\x94\xb6\xe8\xb4\xa7\xe5\x9c\xb0\xe5\x9d\x80\xe7\x9a\x84\xe6\x8f\x90\xe7\xa4\xba\xe3\x80\x82\xe3\x80\x82\xe3\x80\x82</span>\r\n  </div>\r\n  <table class=\"table\" id=\"goodslist\">\r\n  \t<tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x90\x8d\xe7\xa7\xb0</td>  \r\n        <td colspan=\"3\">iphonex</td>\r\n     </tr>  \r\n     <tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x9b\xbe\xe7\x89\x87</td>  \r\n        <td colspan=\"3\"><img src=\"/img/iphonex.png\" width=\"200\" height=\"200\" /></td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe7\xa7\x92\xe6\x9d\x80\xe5\xbc\x80\xe5\xa7\x8b\xe6\x97\xb6\xe9\x97\xb4</td>  \r\n        <td>2019-07-25 10:22:15</td>\r\n        <td id=\"miaoshaTip\">\t\r\n        \t<input type=\"hidden\" id=\"remainSeconds\" value=\"0\" />\r\n        \t\r\n        \t<span>\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad</span>\r\n        \t\r\n        </td>\r\n        <td>\r\n        \t<form id=\"miaoshaForm\" method=\"post\" action=\"/seckill/do_seckill\">\r\n        \t\t<button class=\"btn btn-primary btn-block\" type=\"submit\" id=\"buyButton\">\xe7\xab\x8b\xe5\x8d\xb3\xe7\xa7\x92\xe6\x9d\x80</button>\r\n        \t\t<input type=\"hidden\" name=\"goodsId\" value=\"1\" />\r\n        \t</form>\r\n        </td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x8e\x9f\xe4\xbb\xb7</td>  \r\n        <td colspan=\"3\">8756.0</td>\r\n     </tr>\r\n      <tr>  \r\n        <td>\xe7\xa7\x92\xe6\x9d\x80\xe4\xbb\xb7</td>  \r\n        <td colspan=\"3\">0.01</td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe5\xba\x93\xe5\xad\x98\xe6\x95\xb0\xe9\x87\x8f</td>  \r\n        <td colspan=\"3\">3</td>\r\n     </tr>\r\n  </table>\r\n</div>\r\n</body>\r\n<script>\r\n$(function(){\r\n\tcountDown();\r\n});\r\n\r\nfunction countDown(){\r\n\tvar remainSeconds = $(\"#remainSeconds\").val();\r\n\tvar timeout;\r\n\tif(remainSeconds > 0){//\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x98\xe6\xb2\xa1\xe5\xbc\x80\xe5\xa7\x8b\xef\xbc\x8c\xe5\x80\x92\xe8\xae\xa1\xe6\x97\xb6\r\n\t\t$(\"#buyButton\").attr(\"disabled\", true);\r\n\t\ttimeout = setTimeout(function(){\r\n\t\t\t$(\"#countDown\").text(remainSeconds - 1);\r\n\t\t\t$(\"#remainSeconds\").val(remainSeconds - 1);\r\n\t\t\tcountDown();\r\n\t\t},1000);\r\n\t}else if(remainSeconds == 0){//\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad\r\n\t\t$(\"#buyButton\").attr(\"disabled\", false);\r\n\t\tif(timeout){\r\n\t\t\tclearTimeout(timeout);\r\n\t\t}\r\n\t\t$(\"#miaoshaTip\").html(\"\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad\");\r\n\t}else{//\xe7\xa7\x92\xe6\x9d\x80\xe5\xb7\xb2\xe7\xbb\x8f\xe7\xbb\x93\xe6\x9d\x9f\r\n\t\t$(\"#buyButton\").attr(\"disabled\", true);\r\n\t\t$(\"#miaoshaTip\").html(\"\xe7\xa7\x92\xe6\x9d\x80\xe5\xb7\xb2\xe7\xbb\x8f\xe7\xbb\x93\xe6\x9d\x9f\");\r\n\t}\r\n}\r\n\r\n</script>\r\n</html>\r\n"
 
+第五节：接口优化
+
+1.从缓存中预减少库存;2.将秒杀信息传递给rabbitMQ; 3.rabbitMQ来具体执行任务
+
+	 @RequestMapping(value = "/{path}/do_seckill",method = RequestMethod.POST)
+	 @ResponseBody
+	 public Result<CodeMsg> do_seckill(HttpServletResponse response,Model model, @RequestParam("goodsId")long goodsId,
+	 @CookieValue(value= SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+		      @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken,
+	              @PathVariable("path")String path){
+        //首先检查用户是否存在，用户不存在要返回登陆页面,用户应该从缓存中查找
+        if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+            //return "login";
+            return Result.error(CodeMsg.USER_NOT_EXITS);
+        }
+        String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+        SeckillUser seckillUser = seckillService.getByToken(response,token);
+        model.addAttribute("seckillUser",seckillUser);
+
+        if(seckillUser==null){
+            return Result.error(CodeMsg.USER_NOT_EXITS);
+        }
+
+        boolean check = seckillService.checkPath(seckillUser,goodsId,path);
+        if(!check){
+            return Result.error(CodeMsg.REQUEST_ILLEGAL);
+        }
+
+        boolean over =  localOverMap.get(goodsId);
+        if(over){
+            return Result.error(CodeMsg.STOCK_EMPTY);
+        }
+
+        //预减库存，从redis缓存中获得库存信息
+        //long stock = redisService.get(GoodsKey.goodsStock,""+goodsId,Long.class);
+        long stock = redisService.decr(GoodsKey.goodsStock,""+goodsId);
+        if(stock<0){
+            localOverMap.put(goodsId,true);
+            return Result.error(CodeMsg.STOCK_EMPTY);
+        }
+        //判断是否已经秒杀到了
+        SeckillOrder  seckillOrder = orderService.findOrderByUserIdAndGoodsId(seckillUser.getId(),goodsId);
+        if(seckillOrder!=null){
+            //model.addAttribute("msg", CodeMsg.ORDER_UNREAPTEABLE.getMsg());
+            //return "seckill_fail";
+            return Result.error(CodeMsg.ORDER_UNREAPTEABLE);
+        }
+
+        SeckillMessage seckillMessage = new SeckillMessage();
+        seckillMessage.setGoodsId(goodsId);
+        seckillMessage.setSeckillUser(seckillUser);
+        mqSender.sendMessage(seckillMessage);
+        return Result.sucess(0);//排队中
+    }
 
 
+2.url隐藏,并不提供真实得秒杀地址，而是去获取一个随机得秒杀地址
+
+	#1 获取一个随机得path
+	function getSeckillPath(){
+	    var goodsId = $("#goodsId").val();
+	    g_showLoading();
+	    $.ajax({
+		url:"/seckill/path",
+		type:"GET",
+		data:{
+		    goodsId:goodsId,
+		},
+		success:function (data) {
+		    doSeckill(path);
+		},
+		error:function () {
+		   layer.msg("客户端请求有误");
+		}
+	    });
+	}
+
+	#2 验证秒杀地址
+	boolean check = seckillService.checkPath(seckillUser,goodsId,path);
+        if(!check){
+            return Result.error(CodeMsg.REQUEST_ILLEGAL);
+        }
 
 
-
-
-
-
+	#3.接口限流：设定某个时间段只能允许有限得访问。
+	Integer count = redisService.get(ak, key, Integer.class);
+	if(count  == null) {
+		 redisService.set(ak, key, 1);
+	}else if(count < maxCount) {
+		 redisService.incr(ak, key);
+	}else {
+		render(response, CodeMsg.ACCESS_LIMIT_REACHED);
+		return false;
+	}
 
 
 
