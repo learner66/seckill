@@ -1,5 +1,7 @@
 package com.zhang.seckill.redis;
 
+
+
 public class GoodsKey extends BasePrefix {
     private   final  static  int GOODS_EXPIRE = 60;
     public GoodsKey(int expireSeconds, String prefix) {
@@ -7,4 +9,5 @@ public class GoodsKey extends BasePrefix {
     }
     public static GoodsKey goodsList= new GoodsKey(GOODS_EXPIRE, "goodsList");
     public static GoodsKey goodsId= new GoodsKey(GOODS_EXPIRE, "goodsId");
+    public static GoodsKey goodsStock = new GoodsKey(0,"goodsStock");
 }

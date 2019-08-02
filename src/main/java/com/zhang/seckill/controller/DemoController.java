@@ -2,6 +2,7 @@ package com.zhang.seckill.controller;
 
 
 import com.zhang.seckill.domain.User;
+import com.zhang.seckill.rabbitmq.MQSender;
 import com.zhang.seckill.redis.RedisService;
 import com.zhang.seckill.redis.UserKey;
 import com.zhang.seckill.result.Result;
@@ -21,6 +22,9 @@ public class DemoController {
 
     @Autowired
     RedisService redisService;
+
+    @Autowired
+    MQSender mqSender;
 
     @RequestMapping("/")
     @ResponseBody
@@ -93,5 +97,12 @@ public class DemoController {
         redisService.set(UserKey.getById,"1",user);
         return Result.sucess("sucess");
     }
+
+    /*@RequestMapping("/mq")
+    @ResponseBody
+    public Result<String> mq(){
+        mqSender.sendMessage("hello,zhang");
+        return Result.sucess("hello");
+    }*/
 
 }

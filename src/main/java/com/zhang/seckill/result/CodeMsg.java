@@ -1,6 +1,7 @@
 package com.zhang.seckill.result;
 
 public class CodeMsg {
+
     private int code;
     private String msg;
 
@@ -18,6 +19,8 @@ public class CodeMsg {
     //订单异常信息
     public static final CodeMsg ORDER_UNREAPTEABLE= new CodeMsg(500300,"不能重复秒杀");
     public static final CodeMsg STOCK_EMPTY= new CodeMsg(500301,"库存不足");
+
+    public static final CodeMsg REQUEST_ILLEGAL = new CodeMsg(5005001,"请求异常");
 
      CodeMsg(int code, String msg) {
         this.code = code;

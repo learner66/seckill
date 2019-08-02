@@ -2,9 +2,11 @@ package com.zhang.seckill.service;
 
 import com.zhang.seckill.dao.SeckillUserDao;
 import com.zhang.seckill.domain.OrderInfo;
+import com.zhang.seckill.domain.SeckillOrder;
 import com.zhang.seckill.domain.SeckillUser;
 import com.zhang.seckill.exception.GlobalException;
 import com.zhang.seckill.redis.RedisService;
+import com.zhang.seckill.redis.SeckillKey;
 import com.zhang.seckill.redis.SeckillUserKey;
 import com.zhang.seckill.result.CodeMsg;
 import com.zhang.seckill.util.MD5Util;
@@ -35,6 +37,7 @@ public class SeckillService {
     @Autowired
     OrderService orderService;
 
+
     //减少订单
     @Transactional
     public  OrderInfo seckill(SeckillUser seckillUser, GoodsVo goodsVo) {
@@ -42,7 +45,12 @@ public class SeckillService {
         goodsService.reduceStock(goodsVo);
         //2.生成秒杀商品订单
         OrderInfo orderInfo = orderService.createOrder(seckillUser,goodsVo);
+        setGoodsOver(goodsVo.getId());
         return orderInfo;
+    }
+
+    private void setGoodsOver(long id) {
+        redisService.set(SeckillKey.isGoodsOver,""+id,true);
     }
 
     public SeckillUser getByToken(HttpServletResponse response, String token) {
@@ -101,5 +109,42 @@ public class SeckillService {
         cookie.setMaxAge(SeckillUserKey.token.expireSeconds());
         cookie.setPath("/");
         response.addCookie(cookie);
+    }
+
+    public long getSeckillResult(Long id, long goodsId) {
+        SeckillOrder seckillOrder = orderService.findOrderByUserIdAndGoodsId(id,goodsId);
+        if(seckillOrder!=null){//秒杀成功
+            return seckillOrder.getOrderId();
+        }else{
+           boolean isOver = getGoodsOver(goodsId);
+           if(isOver){
+               return -1;
+           }else{
+               return 0;
+           }
+        }
+    }
+
+    private boolean getGoodsOver(long goodsId) {
+        return redisService.exist(SeckillKey.isGoodsOver,""+goodsId);
+    }
+
+    //生成随机路径
+    public String createPath(SeckillUser seckillUser, long goodsId) {
+        if(seckillUser == null || goodsId <=0) {
+            return null;
+        }
+        String str = MD5Util.md5(UUIDUtil.uuid()+"123456");
+        redisService.set(SeckillKey.getSeckillPath, ""+seckillUser.getId() + "_"+ goodsId, str);
+        return str;
+    }
+
+    //验证请求路径
+    public boolean checkPath(SeckillUser seckillUser, long goodsId, String path) {
+        if(seckillUser == null || path == null) {
+            return false;
+        }
+        String pathOld = redisService.get(SeckillKey.getSeckillPath, ""+seckillUser.getId() + "_"+ goodsId, String.class);
+        return path.equals(pathOld);
     }
 }
