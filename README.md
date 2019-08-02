@@ -307,6 +307,212 @@ redis这里不细说，需要另外学习。
 
 
 
+第三节：秒杀逻辑
+数据库设计
+
+秒杀逻辑（未优化）
+#1 进入商品列表页面
+#2 点击商品详情页面
+#3 点击秒杀
+#4 去库存，创建订单
+
+        @RequestMapping("/do_seckill")
+        public String do_seckill(HttpServletResponse response,Model model, @RequestParam("goodsId")long goodsId,
+         @CookieValue(value= SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+                                 @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken){
+            //首先检查用户是否存在，用户不存在要返回登陆页面,用户应该从缓存中查找
+            if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+                return "login";
+            }
+            String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+            SeckillUser seckillUser = seckillService.getByToken(response,token);
+            model.addAttribute("seckillUser",seckillUser);
+            //1.如果用户不存在，那么就返回到登陆页面
+            if(seckillUser==null){
+                return "login";
+            }
+            //2.判断存库，应该在秒杀商品表验证
+            GoodsVo goodsVo = goodsService.getGoodsByGoodsId(goodsId);
+            int stock = goodsVo.getGoodsStock();
+            if(stock<=0){
+                model.addAttribute("msg", CodeMsg.STOCK_EMPTY.getMsg());
+                return "seckill_fail";
+            }
+
+            //3.如果该用户已经下过订单(秒杀订单)，那么就不能再进行下单
+            SeckillOrder  seckillOrder = orderService.findOrderByUserIdAndGoodsId(seckillUser.getId(),goodsId);
+            if(seckillOrder!=null){
+                model.addAttribute("msg", CodeMsg.ORDER_UNREAPTEABLE.getMsg());
+                return "seckill_fail";
+            }
+
+            //4.减库存，生成订单,为用户和商品生成订单，并将库存减少,应该添加事务
+            OrderInfo orderInfo = seckillService.seckill(seckillUser,goodsVo);
+            model.addAttribute("orderInfo",orderInfo);
+            model.addAttribute("goods",goodsVo);
+            return "order_detail";
+        }
+
+使用Jmeter对未优化的代码进行压测
+
+压测的代码段
+
+    @RequestMapping("/to_list")
+    public String toList(HttpServletResponse response,Model model, @CookieValue(value= SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+                         @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken){
+        if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+            return "login";
+        }
+        String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+        SeckillUser user = seckillService.getByToken(response,token); //从redis中获取用户缓存
+
+        List<GoodsVo> goodsList =  goodsService.findGoodsVo(); //从数据库中获取商品信息
+        model.addAttribute("goodsList",goodsList);
+        //log.info("now...");
+        return "goods_list";
+    }
+
+压测时mysql服务进程的资源利用率
+
+        PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND   
+        7715 mysql     20   0 1575008 150028  17692 S 112.3  3.7   0:15.72 mysqld  
+        
+压测的吞吐量 2439.0/sec
+
+第四节:缓存优化
+
+缓存是为了减轻数据库访问的压力
+#1页面缓存：当访问一个页面的时候，可以把该页面放置到redis数据中，方便访问，如果第一次访问的时候，不存在页面缓存，就从数据库中取出数据进行缓存。
+
+    @RequestMapping(value = "/to_list",produces = "text/html")
+    @ResponseBody
+    public String toList(HttpServletRequest request,HttpServletResponse response, Model model, @CookieValue(value=                                            SeckillService.COOKIE_NAME_TOKEN,required = false)String cookieToken,
+                     @RequestParam(value=SeckillService.COOKIE_NAME_TOKEN,required = false) String paramToken){
+    if(StringUtils.isEmpty(cookieToken)&&StringUtils.isEmpty(paramToken)){
+        return "login";
+    }
+    String token = StringUtils.isEmpty(paramToken) ? cookieToken:paramToken;
+    SeckillUser user = seckillService.getByToken(response,token);
+
+
+    /*  这里没有使用缓存，每次渲染一个新页面返回
+        List<GoodsVo> goodsList =  goodsService.findGoodsVo();
+        model.addAttribute("goodsList",goodsList);
+        return "goods_list";
+    */
+    //使用redis缓存，如果缓存中存在查找的页面内容，直接返回就可以，如果没有，则手动渲染，并把页面存入缓存。
+    String html = redisService.get(GoodsKey.goodsList,"",String.class);
+    //如果redis缓存中有html，则可以获取该htm
+    if(!StringUtils.isEmpty(html)){
+        return html;
+    }
+    //如果没有，则手动渲染
+    List<GoodsVo> goodsList =  goodsService.findGoodsVo();
+    model.addAttribute("goodsList",goodsList);
+    /*SpringWebContext ctx = new SpringWebContext(request,response,
+            request.getServletContext(),request.getLocale(), model.asMap(), applicationContext );*/
+    WebContext wc = new WebContext(request,response,request.getServletContext(),request.getLocale(),model.asMap());
+    html = thymeleafViewResolver.getTemplateEngine().process("goods_list",wc);
+    if(!StringUtils.isEmpty(html)){
+        redisService.set(GoodsKey.goodsList,"",html);
+    }
+    return html;
+}
+#2 URL缓存：当访问一个url的时候，可以根据该url中提供的参数进行缓存，如缓存某一个商品ID的信息。
+
+    @RequestMapping(value = "/to_detail/{goodsId}",produces = "text/html")
+    @ResponseBody
+    public String detail(HttpServletRequest request,HttpServletResponse response,Model model, SeckillUser seckillUser,
+                         @PathVariable("goodsId")long goodsId){
+        //snowflake
+        model.addAttribute("user",seckillUser);
+        //同样，这里也增加缓存
+        String html = redisService.get(GoodsKey.goodsId,""+goodsId,String.class);
+        if(!StringUtils.isEmpty(html)){
+            return  html;
+        }
+
+    GoodsVo goodsVo = goodsService.getGoodsByGoodsId(goodsId);
+    long startTime = goodsVo.getStartDate().getTime();
+    long endTime = goodsVo.getEndDate().getTime();
+    long now = System.currentTimeMillis();
+
+
+    int seckillStatus  = 0;
+    int remainSeconds = 0;
+
+
+    if(now<startTime){ //秒杀还没开始，倒计时
+        seckillStatus  = 0;
+        remainSeconds = (int)((startTime - now)/1000);
+    }else if(now>endTime){ //秒杀已经结束
+        seckillStatus  = 2;
+        remainSeconds = -1;
+    }else{ //秒杀进行时
+        seckillStatus  = 1;
+        remainSeconds = 0;
+    }
+    model.addAttribute("seckillStatus",seckillStatus);
+    model.addAttribute("remainSeconds",remainSeconds);
+    model.addAttribute("goodsVo",goodsVo);
+
+
+    //缓存中没有，那么就手动渲染，注意，缓存是有时效的
+    WebContext wc = new WebContext(request,response,request.getServletContext(),request.getLocale(),model.asMap());
+    html = thymeleafViewResolver.getTemplateEngine().process("goods_detail",wc);
+    if(!StringUtils.isEmpty(html)){
+        redisService.set(GoodsKey.goodsId,""+goodsId,html);
+    }
+    return html;
+    //return "goods_detail";
+}
+
+
+#3 对象缓存：就是当一个访问一个对象的时候，首先从缓存中查找该对象，如果不存在才会去数据库中查找；如果要进行对象的更新操作的话，要注意缓存的更新操作。
+
+
+	public boolean updatePassword(String token, long id, String formPass) {
+		//取user
+		MiaoshaUser user = getById(id);
+		if(user == null) {
+			throw new GlobalException(CodeMsg.MOBILE_NOT_EXIST);
+		}
+		//更新数据库
+		MiaoshaUser toBeUpdate = new MiaoshaUser();
+		toBeUpdate.setId(id);
+		toBeUpdate.setPassword(MD5Util.formPassToDBPass(formPass, user.getSalt()));
+		miaoshaUserDao.update(toBeUpdate);
+		//处理缓存
+		redisService.delete(MiaoshaUserKey.getById, ""+id);
+		user.setPassword(toBeUpdate.getPassword());
+		redisService.set(MiaoshaUserKey.token, token, user);
+		return true;
+	}
+
+
+    127.0.0.1:6379> get GoodsKey:goodsList
+    "<!DOCTYPE HTML>\r\n<html>\r\n<head>\r\n    <title>\xe5\x95\x86\xe5\x93\x81\xe5\x88\x97\xe8\xa1\xa8</title>\r\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\r\n    <!-- jquery -->\r\n    <script type=\"text/javascript\" src=\"/js/jquery.min.js\"></script>\r\n    <!-- bootstrap -->\r\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"/bootstrap/css/bootstrap.min.css\" />\r\n    <script type=\"text/javascript\" src=\"/bootstrap/js/bootstrap.min.js\"></script>\r\n    <!-- jquery-validator -->\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/jquery.validate.min.js\"></script>\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/localization/messages_zh.min.js\"></script>\r\n    <!-- layer -->\r\n    <script type=\"text/javascript\" src=\"/layer/layer.js\"></script>\r\n    <!-- md5.js -->\r\n    <script type=\"text/javascript\" src=\"/js/md5.min.js\"></script>\r\n    <!-- common.js -->\r\n    <script type=\"text/javascript\" src=\"/js/common.js\"></script>\r\n</head>\r\n<body>\r\n<div class=\"panel panel-default\">\r\n    <div class=\"panel-heading\">\xe7\xa7\x92\xe6\x9d\x80\xe5\x95\x86\xe5\x93\x81\xe5\x88\x97\xe8\xa1\xa8</div>\r\n    <table class=\"table\" id=\"goodslist\">\r\n        <tr><td>\xe5\x95\x86\xe5\x93\x81\xe5\x90\x8d\xe7\xa7\xb0</td><td>\xe5\x95\x86\xe5\x93\x81\xe5\x9b\xbe\xe7\x89\x87</td><td>\xe5\x95\x86\xe5\x93\x81\xe5\x8e\x9f\xe4\xbb\xb7</td><td>\xe7\xa7\x92\xe6\x9d\x80\xe4\xbb\xb7</td><td>\xe5\xba\x93\xe5\xad\x98\xe6\x95\xb0\xe9\x87\x8f</td><td>\xe8\xaf\xa6\xe6\x83\x85</td></tr>\r\n        <tr>\r\n            <td>iphonex</td>\r\n            <td ><img src=\"/img/iphonex.png\" width=\"100\" height=\"100\" /></td>\r\n            <td>8756.0</td>\r\n            <td>0.01</td>\r\n            <td>3</td>\r\n            <td><a href=\"/goods/to_detail/1\">\xe8\xaf\xa6\xe6\x83\x85</a></td>\r\n        </tr>\r\n        <tr>\r\n            <td>\xe5\x8d\x8e\xe4\xb8\xbamate10</td>\r\n            <td ><img src=\"/img/meta10.png\" width=\"100\" height=\"100\" /></td>\r\n            <td>3212.0</td>\r\n            <td>0.01</td>\r\n            <td>9</td>\r\n            <td><a href=\"/goods/to_detail/2\">\xe8\xaf\xa6\xe6\x83\x85</a></td>\r\n        </tr>\r\n    </table>\r\n</div>\r\n</body>\r\n</html>\r\n"
+    127.0.0.1:6379> get GoodsKey:goodsId1
+    "<!DOCTYPE HTML>\r\n<html>\r\n<head>\r\n    <title>\xe5\x95\x86\xe5\x93\x81\xe8\xaf\xa6\xe6\x83\x85</title>\r\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\r\n    <!-- jquery -->\r\n    <script type=\"text/javascript\" src=\"/js/jquery.min.js\"></script>\r\n    <!-- bootstrap -->\r\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"/bootstrap/css/bootstrap.min.css\" />\r\n    <script type=\"text/javascript\" src=\"/bootstrap/js/bootstrap.min.js\"></script>\r\n    <!-- jquery-validator -->\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/jquery.validate.min.js\"></script>\r\n    <script type=\"text/javascript\" src=\"/jquery-validation/localization/messages_zh.min.js\"></script>\r\n    <!-- layer -->\r\n    <script type=\"text/javascript\" src=\"/layer/layer.js\"></script>\r\n    <!-- md5.js -->\r\n    <script type=\"text/javascript\" src=\"/js/md5.min.js\"></script>\r\n    <!-- common.js -->\r\n    <script type=\"text/javascript\" src=\"/js/common.js\"></script>\r\n</head>\r\n<body>\r\n\r\n<div class=\"panel panel-default\">\r\n  <div class=\"panel-heading\">\xe7\xa7\x92\xe6\x9d\x80\xe5\x95\x86\xe5\x93\x81\xe8\xaf\xa6\xe6\x83\x85</div>\r\n  <div class=\"panel-body\">\r\n  \t\r\n  \t<span>\xe6\xb2\xa1\xe6\x9c\x89\xe6\x94\xb6\xe8\xb4\xa7\xe5\x9c\xb0\xe5\x9d\x80\xe7\x9a\x84\xe6\x8f\x90\xe7\xa4\xba\xe3\x80\x82\xe3\x80\x82\xe3\x80\x82</span>\r\n  </div>\r\n  <table class=\"table\" id=\"goodslist\">\r\n  \t<tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x90\x8d\xe7\xa7\xb0</td>  \r\n        <td colspan=\"3\">iphonex</td>\r\n     </tr>  \r\n     <tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x9b\xbe\xe7\x89\x87</td>  \r\n        <td colspan=\"3\"><img src=\"/img/iphonex.png\" width=\"200\" height=\"200\" /></td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe7\xa7\x92\xe6\x9d\x80\xe5\xbc\x80\xe5\xa7\x8b\xe6\x97\xb6\xe9\x97\xb4</td>  \r\n        <td>2019-07-25 10:22:15</td>\r\n        <td id=\"miaoshaTip\">\t\r\n        \t<input type=\"hidden\" id=\"remainSeconds\" value=\"0\" />\r\n        \t\r\n        \t<span>\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad</span>\r\n        \t\r\n        </td>\r\n        <td>\r\n        \t<form id=\"miaoshaForm\" method=\"post\" action=\"/seckill/do_seckill\">\r\n        \t\t<button class=\"btn btn-primary btn-block\" type=\"submit\" id=\"buyButton\">\xe7\xab\x8b\xe5\x8d\xb3\xe7\xa7\x92\xe6\x9d\x80</button>\r\n        \t\t<input type=\"hidden\" name=\"goodsId\" value=\"1\" />\r\n        \t</form>\r\n        </td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe5\x95\x86\xe5\x93\x81\xe5\x8e\x9f\xe4\xbb\xb7</td>  \r\n        <td colspan=\"3\">8756.0</td>\r\n     </tr>\r\n      <tr>  \r\n        <td>\xe7\xa7\x92\xe6\x9d\x80\xe4\xbb\xb7</td>  \r\n        <td colspan=\"3\">0.01</td>\r\n     </tr>\r\n     <tr>  \r\n        <td>\xe5\xba\x93\xe5\xad\x98\xe6\x95\xb0\xe9\x87\x8f</td>  \r\n        <td colspan=\"3\">3</td>\r\n     </tr>\r\n  </table>\r\n</div>\r\n</body>\r\n<script>\r\n$(function(){\r\n\tcountDown();\r\n});\r\n\r\nfunction countDown(){\r\n\tvar remainSeconds = $(\"#remainSeconds\").val();\r\n\tvar timeout;\r\n\tif(remainSeconds > 0){//\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x98\xe6\xb2\xa1\xe5\xbc\x80\xe5\xa7\x8b\xef\xbc\x8c\xe5\x80\x92\xe8\xae\xa1\xe6\x97\xb6\r\n\t\t$(\"#buyButton\").attr(\"disabled\", true);\r\n\t\ttimeout = setTimeout(function(){\r\n\t\t\t$(\"#countDown\").text(remainSeconds - 1);\r\n\t\t\t$(\"#remainSeconds\").val(remainSeconds - 1);\r\n\t\t\tcountDown();\r\n\t\t},1000);\r\n\t}else if(remainSeconds == 0){//\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad\r\n\t\t$(\"#buyButton\").attr(\"disabled\", false);\r\n\t\tif(timeout){\r\n\t\t\tclearTimeout(timeout);\r\n\t\t}\r\n\t\t$(\"#miaoshaTip\").html(\"\xe7\xa7\x92\xe6\x9d\x80\xe8\xbf\x9b\xe8\xa1\x8c\xe4\xb8\xad\");\r\n\t}else{//\xe7\xa7\x92\xe6\x9d\x80\xe5\xb7\xb2\xe7\xbb\x8f\xe7\xbb\x93\xe6\x9d\x9f\r\n\t\t$(\"#buyButton\").attr(\"disabled\", true);\r\n\t\t$(\"#miaoshaTip\").html(\"\xe7\xa7\x92\xe6\x9d\x80\xe5\xb7\xb2\xe7\xbb\x8f\xe7\xbb\x93\xe6\x9d\x9f\");\r\n\t}\r\n}\r\n\r\n</script>\r\n</html>\r\n"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
